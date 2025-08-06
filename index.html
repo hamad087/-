@@ -33,17 +33,21 @@
       if (!name) return alert('ادخل اسم العضو');
       if (!amount || amount <= 0) return alert('ادخل مبلغ صحيح');
 
-      const res = await fetch(SHEET_URL, {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, amount, desc, trip })
-      });
+      try {
+        const res = await fetch(SHEET_URL, {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, amount, desc, trip })
+        });
 
-      const text = await res.json();
-      document.getElementById('status').textContent = text.success ? "تمت الإضافة بنجاح" : "حدث خطأ";
-
-      clearForm();
-      setTimeout(() => loadReport(), 300);
+        const text = await res.text();
+        document.getElementById('status').textContent = text || "تمت الإضافة";
+        clearForm();
+        setTimeout(() => loadReport(), 300);
+      } catch (err) {
+        document.getElementById('status').textContent = "خطأ في الإرسال";
+        console.error(err);
+      }
     }
 
     function clearForm() {
@@ -94,12 +98,15 @@
         while (i < owes.length && j < gets.length) {
           const payAmount = Math.min(owes[i].amount, gets[j].amount);
           report += `- ${owes[i].name} يدفع ${payAmount.toFixed(2)} ريال لـ ${gets[j].name}\n`;
-          owes[i].amount -= payAmount; gets[j].amount -= payAmount;
-          if (owes[i].amount === 0) i++; if (gets[j].amount === 0) j++;
+          owes[i].amount -= payAmount;
+          gets[j].amount -= payAmount;
+          if (owes[i].amount === 0) i++;
+          if (gets[j].amount === 0) j++;
         }
 
         document.getElementById('report').textContent = report;
         window.reportText = report;
+
       } catch (err) {
         console.error(err);
         document.getElementById('report').textContent = 'حدث خطأ أثناء تحميل التقرير.';
@@ -109,7 +116,7 @@
     function sendWhatsapp() {
       if (!window.reportText) return alert('لا يوجد تقرير لإرساله');
       const text = encodeURIComponent(window.reportText);
-      window.open(`https://wa.me/?text=${text}`, '_blank`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
     }
   </script>
 </body>
