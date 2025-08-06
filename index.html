@@ -39,10 +39,11 @@
         body: JSON.stringify({ name, amount, desc, trip })
       });
 
-      const text = await res.text();
-      document.getElementById('status').textContent = text;
+      const text = await res.json();
+      document.getElementById('status').textContent = text.success ? "تمت الإضافة بنجاح" : "حدث خطأ";
+
       clearForm();
-      setTimeout(() => loadReport(), 300); // تحديث التقرير بعد الإضافة
+      setTimeout(() => loadReport(), 300);
     }
 
     function clearForm() {
@@ -54,7 +55,7 @@
     async function loadReport() {
       const trip = document.getElementById('trip').value.trim();
       if (!trip) {
-        document.getElementById('report').textContent = 'يرجى كتابة اسم الرحلة لعرض التقرير';
+        document.getElementById('report').textContent = '';
         return;
       }
 
@@ -67,9 +68,7 @@
           return;
         }
 
-        let total = 0;
-        const payments = {};
-
+        let total = 0, payments = {};
         data.forEach(row => {
           const name = row[0];
           const amount = parseFloat(row[1]) || 0;
@@ -81,37 +80,28 @@
         const share = total / people.length;
 
         let report = `📊 إجمالي المصروفات: ${total.toFixed(2)} ريال\n\n`;
-
-        people.forEach(p => {
-          report += `- ${p}: دفع ${payments[p].toFixed(2)} ريال\n`;
-        });
+        people.forEach(p => report += `- ${p}: دفع ${payments[p].toFixed(2)} ريال\n`);
 
         report += `\n💰 القطة لكل شخص: ${share.toFixed(2)} ريال\n\n`;
 
         let owes = [], gets = [];
-
         people.forEach(p => {
           const diff = payments[p] - share;
-          if (diff > 0) gets.push({ name: p, amount: diff });
-          else if (diff < 0) owes.push({ name: p, amount: -diff });
+          diff > 0 ? gets.push({ name: p, amount: diff }) : diff < 0 && owes.push({ name: p, amount: -diff });
         });
 
         let i = 0, j = 0;
-
         while (i < owes.length && j < gets.length) {
           const payAmount = Math.min(owes[i].amount, gets[j].amount);
           report += `- ${owes[i].name} يدفع ${payAmount.toFixed(2)} ريال لـ ${gets[j].name}\n`;
-          owes[i].amount -= payAmount;
-          gets[j].amount -= payAmount;
-          if (owes[i].amount === 0) i++;
-          if (gets[j].amount === 0) j++;
+          owes[i].amount -= payAmount; gets[j].amount -= payAmount;
+          if (owes[i].amount === 0) i++; if (gets[j].amount === 0) j++;
         }
 
         document.getElementById('report').textContent = report;
         window.reportText = report;
-
       } catch (err) {
-        console.error("فشل تحميل التقرير:", err);
+        console.error(err);
         document.getElementById('report').textContent = 'حدث خطأ أثناء تحميل التقرير.';
       }
     }
@@ -119,7 +109,7 @@
     function sendWhatsapp() {
       if (!window.reportText) return alert('لا يوجد تقرير لإرساله');
       const text = encodeURIComponent(window.reportText);
-      window.open(`https://wa.me/?text=${text}`, '_blank');
+      window.open(`https://wa.me/?text=${text}`, '_blank`);
     }
   </script>
 </body>
