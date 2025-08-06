@@ -11,86 +11,116 @@
 </head>
 <body>
   <h2>أضف عملية شراء</h2>
-<input id="trip" placeholder="اسم الرحلة" oninput="loadReport()" />
+  <input id="trip" placeholder="اسم الرحلة" onchange="loadReport()" />
   <input id="name" placeholder="اسم العضو" />
   <input id="amount" type="number" placeholder="المبلغ" />
   <input id="desc" placeholder="وصف الشراء (اختياري)" />
   <button onclick="addPurchase()">أضف</button>
   <div id="status"></div>
-  <div id="report">جارٍ تحميل التقرير...</div>
+  <div id="report">يرجى إدخال اسم الرحلة لعرض التقرير</div>
   <button onclick="sendWhatsapp()">أرسل التقرير بالواتساب</button>
 
   <script>
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbyJsuZeFCdHYBn8gTj0_8GBZlg-uTP-ylkllz6UJyGvsCY18mz6r8SSMjAP9nn3IHELZg/exec";
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbyJsuZeFCdHYBn8gTj0_8GBZlg-uTP-ylkllz6UJyGvsCY18mz6r8SSMjAP9nn3IHELZg/exec";
 
- async function loadReport() {
-  const trip = document.getElementById('trip').value.trim();
-  if (!trip) {
-    document.getElementById('report').textContent = 'يرجى كتابة اسم الرحلة لعرض التقرير';
-    return;
-  }
+    async function addPurchase() {
+      const name = document.getElementById('name').value.trim();
+      const amount = parseFloat(document.getElementById('amount').value);
+      const desc = document.getElementById('desc').value.trim();
+      const trip = document.getElementById('trip').value.trim();
 
-  const res = await fetch(`${SHEET_URL}?trip=${encodeURIComponent(trip)}`);
-  const data = await res.json();
+      if (!trip) return alert('ادخل اسم الرحلة');
+      if (!name) return alert('ادخل اسم العضو');
+      if (!amount || amount <= 0) return alert('ادخل مبلغ صحيح');
 
-  if (!data.length) {
-    document.getElementById('report').textContent = 'لا توجد بيانات بعد.';
-    return;
-  }
+      const res = await fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, amount, desc, trip })
+      });
 
-  let total = 0;
-  const payments = {};
+      const text = await res.text();
+      document.getElementById('status').textContent = text;
+      clearForm();
+      setTimeout(() => loadReport(), 300); // تحديث التقرير بعد الإضافة
+    }
 
-  data.forEach(row => {
-    const name = row[0];
-    const amount = parseFloat(row[1]) || 0;
-    total += amount;
-    payments[name] = (payments[name] || 0) + amount;
-  });
+    function clearForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('desc').value = '';
+    }
 
-  const people = Object.keys(payments);
-  const share = total / people.length;
+    async function loadReport() {
+      const trip = document.getElementById('trip').value.trim();
+      if (!trip) {
+        document.getElementById('report').textContent = 'يرجى كتابة اسم الرحلة لعرض التقرير';
+        return;
+      }
 
-  let report = `📊 إجمالي المصروفات: ${total.toFixed(2)} ريال\n\n`;
+      try {
+        const res = await fetch(`${SHEET_URL}?trip=${encodeURIComponent(trip)}`);
+        const data = await res.json();
 
-  people.forEach(p => {
-    report += `- ${p}: دفع ${payments[p].toFixed(2)} ريال\n`;
-  });
+        if (!data.length) {
+          document.getElementById('report').textContent = 'لا توجد بيانات بعد.';
+          return;
+        }
 
-  report += `\n💰 القطة لكل شخص: ${share.toFixed(2)} ريال\n\n`;
+        let total = 0;
+        const payments = {};
 
-  let owes = [], gets = [];
+        data.forEach(row => {
+          const name = row[0];
+          const amount = parseFloat(row[1]) || 0;
+          total += amount;
+          payments[name] = (payments[name] || 0) + amount;
+        });
 
-  people.forEach(p => {
-    const diff = payments[p] - share;
-    if (diff > 0) gets.push({ name: p, amount: diff });
-    else if (diff < 0) owes.push({ name: p, amount: -diff });
-  });
+        const people = Object.keys(payments);
+        const share = total / people.length;
 
-  let i = 0, j = 0;
+        let report = `📊 إجمالي المصروفات: ${total.toFixed(2)} ريال\n\n`;
 
-  while (i < owes.length && j < gets.length) {
-    const payAmount = Math.min(owes[i].amount, gets[j].amount);
-    report += `- ${owes[i].name} يدفع ${payAmount.toFixed(2)} ريال لـ ${gets[j].name}\n`;
+        people.forEach(p => {
+          report += `- ${p}: دفع ${payments[p].toFixed(2)} ريال\n`;
+        });
 
-    owes[i].amount -= payAmount;
-    gets[j].amount -= payAmount;
+        report += `\n💰 القطة لكل شخص: ${share.toFixed(2)} ريال\n\n`;
 
-    if (owes[i].amount === 0) i++;
-    if (gets[j].amount === 0) j++;
-  }
+        let owes = [], gets = [];
 
-  document.getElementById('report').textContent = report;
-  window.reportText = report;
-}
+        people.forEach(p => {
+          const diff = payments[p] - share;
+          if (diff > 0) gets.push({ name: p, amount: diff });
+          else if (diff < 0) owes.push({ name: p, amount: -diff });
+        });
 
+        let i = 0, j = 0;
+
+        while (i < owes.length && j < gets.length) {
+          const payAmount = Math.min(owes[i].amount, gets[j].amount);
+          report += `- ${owes[i].name} يدفع ${payAmount.toFixed(2)} ريال لـ ${gets[j].name}\n`;
+          owes[i].amount -= payAmount;
+          gets[j].amount -= payAmount;
+          if (owes[i].amount === 0) i++;
+          if (gets[j].amount === 0) j++;
+        }
+
+        document.getElementById('report').textContent = report;
+        window.reportText = report;
+
+      } catch (err) {
+        console.error("فشل تحميل التقرير:", err);
+        document.getElementById('report').textContent = 'حدث خطأ أثناء تحميل التقرير.';
+      }
+    }
 
     function sendWhatsapp() {
       if (!window.reportText) return alert('لا يوجد تقرير لإرساله');
       const text = encodeURIComponent(window.reportText);
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
-  
   </script>
 </body>
 </html>
