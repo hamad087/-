@@ -23,25 +23,27 @@
   <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbyJsuZeFCdHYBn8gTj0_8GBZlg-uTP-ylkllz6UJyGvsCY18mz6r8SSMjAP9nn3IHELZg/exec";
 
-    async function addPurchase() {
-      const name = document.getElementById('name').value.trim();
-      const amount = parseFloat(document.getElementById('amount').value);
-      const desc = document.getElementById('desc').value.trim();
+ async function addPurchase() {
+  const name = document.getElementById('name').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  const desc = document.getElementById('desc').value.trim();
+  const trip = document.getElementById('trip').value.trim();
 
-      if (!name) return alert('ادخل اسم العضو');
-      if (!amount || amount <= 0) return alert('ادخل مبلغ صحيح');
+  if (!trip) return alert('ادخل اسم الرحلة');
+  if (!name) return alert('ادخل اسم العضو');
+  if (!amount || amount <= 0) return alert('ادخل مبلغ صحيح');
 
-      const res = await fetch(SHEET_URL, {
-        method: 'POST',
-        body: JSON.stringify({ name, amount, desc })
-      });
+  const res = await fetch(SHEET_URL, {
+    method: 'POST',
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, amount, desc, trip })
+  });
 
-      const text = await res.text();
-      document.getElementById('status').textContent = text;
-      loadReport();
-      clearForm();
-    }
-
+  const text = await res.text();
+  document.getElementById('status').textContent = text;
+  loadReport();
+  clearForm();
+}
     function clearForm() {
       document.getElementById('name').value = '';
       document.getElementById('amount').value = '';
